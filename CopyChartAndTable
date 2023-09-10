@@ -1,0 +1,303 @@
+Sub Page21UpdateChart()
+    ' Declare variables
+    Dim ws As Worksheet       ' Worksheet containing the chart
+    Dim chartObj As chartObject   ' Chart object to update
+    Dim newMaxDataRow As Long    ' New maximum data row value
+    Dim newDataRangeX As Range   ' New data range for X values
+    Dim newDataRangeY1 As Range  ' New data range for Y values in Series 1
+    Dim newDataRangeY2 As Range  ' New data range for Y values in Series 2
+    Dim newDataRangeY3 As Range  ' New data range for Y values in Series 3
+    Dim newDataRangeY4 As Range  ' New data range for Y values in Series 4
+    Dim seriesNameY1 As String   ' Series name for Y values in Series 1
+    Dim seriesNameY2 As String   ' Series name for Y values in Series 2
+    Dim seriesNameY3 As String   ' Series name for Y values in Series 3
+    Dim seriesNameY4 As String   ' Series name for Y values in Series 4
+    Dim labelColorY1 As Long     ' Color for data labels in Series 1
+    Dim labelColorY2 As Long     ' Color for data labels in Series 2
+    Dim labelColorY3 As Long     ' Color for data labels in Series 3
+    Dim labelColorY4 As Long     ' Color for data labels in Series 4
+    
+    ' Set the worksheet containing the chart
+    Set ws = ThisWorkbook.Worksheets("16.RetirePlan")
+    
+    ' Set the chart object you want to update
+    Set chartObj = ws.ChartObjects("Chart 1") ' Change "Chart 1" to your chart's name
+    
+    ' Get the new maximum data row from cell AA2
+    newMaxDataRow = ws.Range("AA2").Value
+    
+    ' Find the row number of the cell with the value from AA2 in column T
+    Dim cellWithAA2Value As Range
+    On Error Resume Next
+    Set cellWithAA2Value = ws.Columns("T").Find(What:=newMaxDataRow, LookIn:=xlValues, LookAt:=xlWhole)
+    On Error GoTo 0
+    
+    If Not cellWithAA2Value Is Nothing Then
+        ' Get series names
+        seriesNameY1 = ws.Range("U3").Value
+        seriesNameY2 = ws.Range("V3").Value
+        seriesNameY3 = ws.Range("W3").Value
+        seriesNameY4 = ws.Range("X3").Value
+        
+        ' Calculate the new data ranges based on the found row
+        Set newDataRangeX = ws.Range("T4:T" & cellWithAA2Value.Row)
+        Set newDataRangeY1 = ws.Range("U4:U" & cellWithAA2Value.Row)
+        Set newDataRangeY2 = ws.Range("V4:V" & cellWithAA2Value.Row)
+        Set newDataRangeY3 = ws.Range("W4:W" & cellWithAA2Value.Row)
+        Set newDataRangeY4 = ws.Range("X4:X" & cellWithAA2Value.Row) ' Define the new data range for Y values in Series 4
+        
+        ' Update series names
+        chartObj.Chart.SeriesCollection(1).Name = seriesNameY1
+        chartObj.Chart.SeriesCollection(2).Name = seriesNameY2
+        chartObj.Chart.SeriesCollection(3).Name = seriesNameY3
+        chartObj.Chart.SeriesCollection(4).Name = seriesNameY4
+        
+        ' Update data ranges for each series
+        chartObj.Chart.SeriesCollection(1).XValues = newDataRangeX
+        chartObj.Chart.SeriesCollection(1).Values = newDataRangeY1
+        chartObj.Chart.SeriesCollection(2).XValues = newDataRangeX
+        chartObj.Chart.SeriesCollection(2).Values = newDataRangeY2
+        chartObj.Chart.SeriesCollection(3).XValues = newDataRangeX
+        chartObj.Chart.SeriesCollection(3).Values = newDataRangeY3
+        chartObj.Chart.SeriesCollection(4).XValues = newDataRangeX
+        chartObj.Chart.SeriesCollection(4).Values = newDataRangeY4
+        
+        ' Clear data labels
+        Dim series As series
+        For Each series In chartObj.Chart.SeriesCollection
+            series.ApplyDataLabels
+            series.DataLabels.Select
+            Selection.Delete
+        Next series
+        
+        ' Add data labels for maximum values, bold them, and set label colors
+        For Each series In chartObj.Chart.SeriesCollection
+            Dim maxIndex As Long
+            maxIndex = Application.WorksheetFunction.Match(Application.WorksheetFunction.Max(series.Values), series.Values, 0)
+            series.Points(maxIndex).ApplyDataLabels ShowSeriesName:=True, ShowValue:=True
+            series.Points(maxIndex).DataLabel.Font.Bold = True
+            
+            ' Set label colors based on series name
+            Select Case series.Name
+                Case seriesNameY1 ' Series 1
+                    labelColorY1 = RGB(0, 128, 0) ' Green
+                    series.Points(maxIndex).DataLabel.Font.Color = labelColorY1
+                Case seriesNameY2 ' Series 2
+                    labelColorY2 = RGB(192, 0, 0) ' Red
+                    series.Points(maxIndex).DataLabel.Font.Color = labelColorY2
+                Case seriesNameY3 ' Series 3
+                    labelColorY3 = RGB(8, 66, 151) ' Dark Blue
+                    series.Points(maxIndex).DataLabel.Font.Color = labelColorY3
+                Case seriesNameY4 ' Series 4
+                    labelColorY4 = RGB(56, 123, 178) ' Light Blue
+                    series.Points(maxIndex).DataLabel.Font.Color = labelColorY4
+            End Select
+        Next series
+    Else
+        ' Display a message if value not found in column T
+        MsgBox "Value not found in column T."
+    End If
+End Sub
+
+
+Sub Page21Chart()
+
+    Dim pptApp As Object
+    Dim pptPres As Object
+    Dim pptSlide As Object
+    Dim cht As chartObject
+    Dim targetSlideIndex As Integer
+    Dim sourceChartName As String
+    Dim sourceWorksheet As Worksheet
+
+    ' Specify the index of the target slide where you want to paste the chart
+    targetSlideIndex = 21
+
+    ' Specify the name of the chart in the Excel worksheet
+    sourceChartName = "Chart 1"
+
+    ' Specify the source worksheet where the chart is located
+    Set sourceWorksheet = ThisWorkbook.Worksheets("16.RetirePlan")
+    ' Activate sheet
+    sourceWorksheet.Activate
+
+
+    On Error Resume Next
+    Set pptApp = GetObject(, "PowerPoint.Application")
+    On Error GoTo 0
+    If pptApp Is Nothing Then
+        Set pptApp = CreateObject("PowerPoint.Application")
+    End If
+
+    On Error Resume Next
+    Set pptPres = pptApp.ActivePresentation
+    On Error GoTo 0
+    If pptPres Is Nothing Then
+        Set pptPres = pptApp.Presentations.Add
+    End If
+
+    If targetSlideIndex >= 1 And targetSlideIndex <= pptPres.Slides.Count Then
+        Set pptSlide = pptPres.Slides(targetSlideIndex)
+        pptSlide.Select
+        On Error Resume Next
+        Set cht = sourceWorksheet.ChartObjects(sourceChartName)
+        On Error GoTo 0
+
+        If Not cht Is Nothing Then
+            cht.Copy
+
+            
+            ' Clear only the existing chart shapes on the PowerPoint slide
+            For i = pptSlide.Shapes.Count To 1 Step -1
+                If pptSlide.Shapes(i).HasChart Then
+                    pptSlide.Shapes(i).Delete
+                End If
+            Next i
+            
+            pptSlide.Shapes.Paste
+
+            ' Get the pasted shape
+            Dim pastedShape As Object
+            Set pastedShape = pptSlide.Shapes(pptSlide.Shapes.Count)
+            
+            pastedShape.Height = 8.69 * 28.3465
+            pastedShape.Width = 24.43 * 28.3465
+
+            ' Align the pasted chart to the center and middle of the slide
+            pastedShape.Left = (pptSlide.Master.Width - pastedShape.Width) / 2
+            pastedShape.Top = 130 '(pptSlide.Master.Height - pastedShape.Height) / 2
+            
+            ' Adjust the top position by moving the shape up by 0.3 cm
+            pastedShape.Top = pastedShape.Top - Application.CentimetersToPoints(0.3)
+            
+            ' Send the pasted shape to the back
+            pastedShape.ZOrder msoSendToBack
+        Else
+            MsgBox "Specified chart not found in the source worksheet."
+        End If
+    Else
+        MsgBox "Invalid target slide index."
+    End If
+    
+
+    ' Clean up objects
+    Set pptSlide = Nothing
+    Set pptPres = Nothing
+    Set pptApp = Nothing
+End Sub
+
+
+Sub Page21Table()
+
+    Dim xlApp As Object ' Excel Application
+    Dim xlWB As Object ' Excel Workbook
+    Dim xlWS As Object ' Excel Worksheet
+    Dim ppApp As Object ' PowerPoint Application
+    Dim ppPresentation As Object ' PowerPoint Presentation
+    Dim ppSlide As Object ' PowerPoint Slide
+    Dim ppShape As Object ' PowerPoint Shape
+    Dim i As Long
+    Dim j As Long
+    Dim tbl As Object ' PowerPoint Table
+    
+    ' Get existing instances of Excel and PowerPoint
+    Set xlApp = GetObject(, "Excel.Application")
+    Set ppApp = GetObject(, "PowerPoint.Application")
+    
+       
+    ' Set references to open workbook, worksheet, and presentation
+    Set xlWB = xlApp.ActiveWorkbook ' Assumes the workbook you want is active
+    Set xlWS = xlWB.Sheets("16.RetirePlan") ' Change to your sheet's name
+    Set ppPresentation = ppApp.ActivePresentation ' Assume you have an active presentation
+    
+    ' Activate sheet
+    xlWS.Activate
+    
+    
+    ' Clear all existing tables on the specified slide
+    Set ppSlide = ppPresentation.Slides(21) ' Change to the desired slide index
+    ppSlide.Select 'Select Slide
+    
+    For i = ppSlide.Shapes.Count To 1 Step -1
+        If ppSlide.Shapes(i).HasTable Then
+            ppSlide.Shapes(i).Delete
+        End If
+    Next i
+    
+        
+    ' Copy the range from Excel
+    xlWS.Range("RetirePlan").Copy '***************
+    
+    ' Paste the copied range as a table into the specified slide in PowerPoint
+    Set ppShape = ppSlide.Shapes.PasteSpecial(DataType:=ppPasteHTML, Link:=msoFalse)
+    Set tbl = ppShape.Table
+   
+    
+    
+    ' Calculate row height
+    Dim totalHeight As Double
+    totalHeight = ppShape.Height ' Total Height of the table shape
+    Dim rowCount As Long
+    rowCount = tbl.Rows.Count
+    Dim rowHeight As Double
+    rowHeight = totalHeight / rowCount
+    
+    
+    ' Set row heights
+    For j = 1 To tbl.Rows.Count
+        tbl.Rows(j).Height = rowHeight
+    Next j
+    
+    
+    ' Set column widths
+    For i = 1 To tbl.Columns.Count
+        tbl.Columns(i).Width = 4.59 * 28.3465
+    Next i
+    
+    
+    ' Set left and right margins for each cell
+    For i = 1 To tbl.Rows.Count
+        For j = 1 To tbl.Columns.Count
+            Dim cellTextFrame As Object
+            Set cellTextFrame = tbl.Cell(i, j).Shape.TextFrame
+            cellTextFrame.MarginLeft = 0.2 * 28.3465 ' Convert cm to points (1 cm = 28.3465 points)
+            cellTextFrame.MarginRight = 0.2 * 28.3465 ' Convert cm to points (1 cm = 28.3465 points)
+            
+            ' Set font size
+            cellTextFrame.TextRange.Font.Size = 14 ' Set font size to 14 pt
+        Next j
+    Next i
+    
+
+    ' Set the position and size of the pasted table
+    ppShape.Top = 385 ' Set the top position in points
+    
+    ' Locate the shape
+    ppShape.Left = (ppSlide.Master.Width - ppShape.Width) / 2 ' Center horizontally
+    
+    
+    
+    ' Move the table shape to the back
+    ppShape.ZOrder msoSendToBack
+
+    ' Clean up
+    Set tbl = Nothing
+    Set ppShape = Nothing
+    Set ppSlide = Nothing
+    Set ppPresentation = Nothing
+    Set ppApp = Nothing
+    Set xlWS = Nothing
+
+
+End Sub
+
+
+
+
+Sub Page21()
+
+Page21UpdateChart
+Page21Chart
+Page21Table
+
+End Sub
